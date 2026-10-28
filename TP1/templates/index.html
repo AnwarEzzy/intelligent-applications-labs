@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>TP1 · Assistant pédagogique</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='dist/css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/custom.css') }}">
+  </head>
+  <body class="min-h-screen bg-slate-100 text-slate-900">
+    <div class="app-shell mx-auto flex min-h-screen max-w-7xl flex-col md:flex-row md:gap-4 md:p-4">
+      <aside class="flex w-full shrink-0 flex-col bg-slate-950 p-5 text-white md:min-h-[calc(100vh-2rem)] md:w-72 md:rounded-3xl">
+        <div class="mb-8 flex items-center gap-3">
+          <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-violet-500 text-xl font-bold">✦</div>
+          <div>
+            <p class="text-lg font-bold leading-tight">Assistant TP1</p>
+            <p class="text-xs text-slate-400">Flask · SQLite · fichiers</p>
+          </div>
+        </div>
+
+        <form action="{{ url_for('create_conversation') }}" method="post" class="mb-6">
+          <input type="hidden" name="specialty" value="{{ conversation['specialty'] }}">
+          <button class="w-full rounded-xl bg-violet-500 px-4 py-3 text-left font-semibold text-white transition hover:bg-violet-400" type="submit">＋ Nouvelle discussion</button>
+        </form>
+
+        <label for="conversation-select" class="mb-2 block text-xs font-bold uppercase tracking-widest text-slate-400">Discussions</label>
+        <select id="conversation-select" aria-label="Choisir une discussion" class="mb-5 w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-3 text-sm text-white" onchange="window.location.href=this.value">
+          {% for item in conversations %}
+            <option value="{{ url_for('index', c=item['id']) }}" {% if item['id'] == conversation['id'] %}selected{% endif %}>{{ item['title'] }}</option>
+          {% endfor %}
+        </select>
+
+        <p class="mb-2 text-xs font-bold uppercase tracking-widest text-slate-400">Historique</p>
+        <nav aria-label="Historique des discussions" class="mb-6 max-h-64 space-y-1 overflow-y-auto">
+          {% for item in conversations %}
+            <a href="{{ url_for('index', c=item['id']) }}" class="block truncate rounded-xl px-3 py-2.5 text-sm transition {% if item['id'] == conversation['id'] %}bg-slate-800 font-semibold text-white{% else %}text-slate-300 hover:bg-slate-900 hover:text-white{% endif %}">{{ item['title'] }}</a>
+          {% endfor %}
+        </nav>
+
+        <div class="mt-auto space-y-2 border-t border-slate-800 pt-5 text-sm">
+          <a href="{{ url_for('export_conversation', conversation_id=conversation['id']) }}" class="block rounded-xl border border-slate-700 px-3 py-2.5 text-slate-200 transition hover:bg-slate-900">↓ Exporter cette discussion</a>
+          <a href="{{ url_for('export_all_conversations') }}" class="block rounded-xl border border-slate-700 px-3 py-2.5 text-slate-200 transition hover:bg-slate-900">↓ Exporter toutes les discussions</a>
+        </div>
+      </aside>
+
+      <main class="flex min-w-0 flex-1 flex-col bg-white md:min-h-[calc(100vh-2rem)] md:rounded-3xl md:shadow-xl md:shadow-slate-200/70">
+        <header class="border-b border-slate-100 px-5 py-5 sm:px-8">
+          <div class="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <p class="mb-1 text-xs font-bold uppercase tracking-widest text-violet-600">TP1 · Application intelligente</p>
+              <h1 class="text-2xl font-bold tracking-tight">{{ conversation['title'] }}</h1>
+              <p class="mt-1 text-sm text-slate-500">Posez une question ou interrogez un fichier importé.</p>
+            </div>
+            <span class="rounded-full px-3 py-1.5 text-xs font-semibold {% if ai_enabled %}bg-emerald-100 text-emerald-800{% else %}bg-amber-100 text-amber-800{% endif %}">
+              {% if ai_enabled %}● OpenAI configuré{% else %}● Mode démo local{% endif %}
+            </span>
+          </div>
+        </header>
+
+        <section class="grid gap-3 border-b border-slate-100 bg-slate-50/80 px-5 py-4 sm:grid-cols-2 sm:px-8" aria-label="Options de la discussion">
+          <form action="{{ url_for('set_specialty', conversation_id=conversation['id']) }}" method="post" class="flex items-end gap-2">
+            <div class="min-w-0 flex-1">
+              <label for="specialty" class="mb-1 block text-xs font-semibold text-slate-600">Spécialité de l’assistant</label>
+              <select id="specialty" name="specialty" class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm">
+                {% for key, label in specialties.items() %}
+                  <option value="{{ key }}" {% if key == conversation['specialty'] %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <button class="rounded-xl bg-slate-900 px-3 py-2.5 text-sm font-medium text-white hover:bg-slate-700" type="submit">Choisir</button>
+          </form>
+
+          <form action="{{ url_for('clear_conversation', conversation_id=conversation['id']) }}" method="post" class="flex items-end sm:justify-end" onsubmit="return confirm('Vider cette discussion et retirer le fichier importé ?')">
+            <button type="submit" class="rounded-xl border border-rose-200 bg-white px-4 py-2.5 text-sm font-semibold text-rose-700 transition hover:bg-rose-50">Vider la conversation</button>
+          </form>
+        </section>
+
+        <section class="border-b border-slate-100 px-5 py-4 sm:px-8" aria-label="Importer un fichier">
+          <div class="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h2 class="text-sm font-bold">Document de référence</h2>
+              {% if conversation['document_name'] %}
+                <p class="mt-1 text-sm text-violet-700">📄 {{ conversation['document_name'] }} · prêt pour les questions</p>
+              {% else %}
+                <p class="mt-1 text-sm text-slate-500">Importez un fichier pour demander un résumé ou poser des questions.</p>
+              {% endif %}
+            </div>
+            <form action="{{ url_for('upload_document', conversation_id=conversation['id']) }}" method="post" enctype="multipart/form-data" class="flex flex-wrap items-center gap-2">
+              <label class="sr-only" for="document">Fichier à importer</label>
+              <input id="document" name="document" type="file" required accept=".txt,.md,.csv,.json,.sql" class="max-w-56 text-xs text-slate-600 file:mr-2 file:rounded-lg file:border-0 file:bg-violet-50 file:px-3 file:py-2 file:font-semibold file:text-violet-700">
+              <button type="submit" class="rounded-xl border border-violet-200 bg-violet-50 px-3 py-2 text-sm font-semibold text-violet-700 hover:bg-violet-100">Importer</button>
+            </form>
+          </div>
+          <p class="mt-2 text-xs text-slate-400">TXT, MD, CSV, JSON ou SQL · 2 Mo maximum · SQL lu comme texte, jamais exécuté.</p>
+        </section>
+
+        {% with notices = get_flashed_messages(with_categories=true) %}
+          {% if notices %}
+            <div class="space-y-2 px-5 pt-4 sm:px-8" role="status">
+              {% for category, notice in notices %}
+                <p class="rounded-xl px-4 py-2 text-sm {% if category == 'success' %}bg-emerald-50 text-emerald-800{% else %}bg-amber-50 text-amber-800{% endif %}">{{ notice }}</p>
+              {% endfor %}
+            </div>
+          {% endif %}
+        {% endwith %}
+
+        <section id="messages" class="messages-panel min-h-80 flex-1 space-y-5 overflow-y-auto px-5 py-6 sm:px-8" aria-label="Messages">
+          {% if not messages %}
+            <div class="flex min-h-64 flex-col items-center justify-center text-center">
+              <div class="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-violet-100 text-3xl text-violet-700">✦</div>
+              <h2 class="text-xl font-bold">Commencez la discussion</h2>
+              <p class="mt-2 max-w-md text-sm leading-6 text-slate-500">Choisissez une spécialité, importez un fichier si nécessaire, puis écrivez votre question.</p>
+              {% if conversation['document_name'] %}
+                <form action="{{ url_for('send_message', conversation_id=conversation['id']) }}" method="post" class="mt-5">
+                  <input type="hidden" name="message" value="Résume ce fichier">
+                  <button type="submit" class="rounded-full border border-violet-200 bg-violet-50 px-4 py-2 text-sm font-semibold text-violet-700 hover:bg-violet-100">Résume ce fichier →</button>
+                </form>
+              {% endif %}
+            </div>
+          {% endif %}
+
+          {% for message in messages %}
+            <article id="message-{{ message['id'] }}" class="flex {% if message['role'] == 'user' %}justify-end{% else %}justify-start{% endif %}">
+              <div class="max-w-[92%] sm:max-w-[78%]">
+                <p class="mb-1.5 text-xs font-semibold {% if message['role'] == 'user' %}text-right text-slate-500{% else %}text-violet-700{% endif %}">{% if message['role'] == 'user' %}Vous{% else %}Assistant{% endif %}</p>
+                <div class="message-text rounded-2xl border px-4 py-3 text-sm leading-6 {% if message['role'] == 'user' %}border-slate-900 bg-slate-900 text-white{% elif message['rating'] == 1 %}border-emerald-300 bg-emerald-50 text-slate-900{% elif message['rating'] == -1 %}border-rose-300 bg-rose-50 text-slate-900{% else %}border-slate-200 bg-slate-50 text-slate-800{% endif %}">{{ message['content'] }}</div>
+                {% if message['role'] == 'assistant' %}
+                  <form action="{{ url_for('rate_message', conversation_id=conversation['id'], message_id=message['id']) }}" method="post" class="mt-2 flex gap-2" aria-label="Évaluer la réponse">
+                    <button name="rating" value="1" type="submit" aria-label="Réponse utile" aria-pressed="{{ 'true' if message['rating'] == 1 else 'false' }}" class="rounded-lg border px-2.5 py-1 text-xs font-semibold {% if message['rating'] == 1 %}border-emerald-300 bg-emerald-100 text-emerald-800{% else %}border-slate-200 bg-white text-slate-500 hover:bg-emerald-50{% endif %}">👍 Utile</button>
+                    <button name="rating" value="-1" type="submit" aria-label="Réponse à améliorer" aria-pressed="{{ 'true' if message['rating'] == -1 else 'false' }}" class="rounded-lg border px-2.5 py-1 text-xs font-semibold {% if message['rating'] == -1 %}border-rose-300 bg-rose-100 text-rose-800{% else %}border-slate-200 bg-white text-slate-500 hover:bg-rose-50{% endif %}">👎 À améliorer</button>
+                  </form>
+                {% endif %}
+              </div>
+            </article>
+          {% endfor %}
+        </section>
+
+        <form action="{{ url_for('send_message', conversation_id=conversation['id']) }}" method="post" class="border-t border-slate-100 bg-white px-5 py-4 sm:px-8">
+          <label for="message" class="sr-only">Votre message</label>
+          <div class="flex items-end gap-3 rounded-2xl border border-slate-200 bg-white p-2 shadow-sm focus-within:border-violet-400">
+            <textarea id="message" name="message" rows="2" maxlength="2000" required placeholder="Écrivez votre question…" class="max-h-36 min-h-12 w-full resize-y border-0 bg-transparent px-2 py-2 text-sm outline-none"></textarea>
+            <button type="submit" class="shrink-0 rounded-xl bg-violet-600 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-violet-500">Envoyer ↗</button>
+          </div>
+          <p class="mt-2 text-center text-xs text-slate-400">Historique conservé dans SQLite · réponses évaluables · export JSON</p>
+        </form>
+      </main>
+    </div>
+    <script>
+      const panel = document.getElementById('messages');
+      if (panel && !window.location.hash.startsWith('#message-')) panel.scrollTop = panel.scrollHeight;
+    </script>
+  </body>
+</html>
