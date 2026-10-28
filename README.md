@@ -11,6 +11,7 @@ la progression des séances.
 | Dossier | Sujet | Technologies |
 | --- | --- | --- |
 | [TP1](TP1/README.md) | Assistant pédagogique avec discussions, fichiers et évaluations | Flask, SQLite, Tailwind CSS |
+| [TP2](TP2/README.md) | Analyse Auto MPG et prÃ©diction de consommation | Streamlit, Plotly, scikit-learn |
 
 ## Démarrer TP1 sur Windows
 
