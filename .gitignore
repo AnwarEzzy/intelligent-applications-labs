@@ -1,0 +1,7 @@
+**/.venv/
+**/node_modules/
+**/instance/
+**/__pycache__/
+**/*.pyc
+**/.env
+*.zip
