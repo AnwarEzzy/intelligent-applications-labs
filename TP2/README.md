@@ -58,19 +58,6 @@ pédagogique et ne prédit pas de manière fiable des véhicules modernes.
 .\.venv\Scripts\python.exe -m unittest discover -s tests -v
 ```
 
-## Publier dans le dépôt du cours
-
-Dans le terminal PowerShell de VS Code, depuis le dossier `TP2` :
-
-```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File .\publish_tp2.ps1
-```
-
-Le script ajoute TP2 au README principal, crée trois commits logiques (données et
-modèle, interface, documentation et tests), puis pousse chaque commit séparément.
-Il vérifie l'historique distant et n'utilise pas de `force push`. Si GitHub n'est
-pas accessible, les commits locaux sont conservés et le script peut être relancé.
-
 ## Source et attribution
 
 Quinlan, R. (1993). *Auto MPG* [jeu de données]. UCI Machine Learning Repository.
